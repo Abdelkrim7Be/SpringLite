@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans>
+    <!-- Repository -->
+    <bean id="userRepository" class="com.bellagnech.springlite.examples.repository.InMemoryUserRepository" />
+    
+    <!-- Services -->
+    <bean id="userService" class="com.bellagnech.springlite.examples.service.UserServiceImpl">
+        <property name="userRepository" ref="userRepository" />
+    </bean>
+    
+    <!-- Prototype-scoped service -->
+    <bean id="notificationService" class="com.bellagnech.springlite.examples.service.NotificationService" scope="prototype" />
+    
+    <!-- Controller -->
+    <bean id="userController" class="com.bellagnech.springlite.examples.controller.UserController">
+        <property name="userService" ref="userService" />
+    </bean>
+</beans>

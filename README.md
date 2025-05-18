@@ -1,96 +1,109 @@
-# SpringLite - Mini Dependency Injection Framework
+# SpringLite - Lightweight Dependency Injection Framework
 
-SpringLite is a lightweight dependency injection framework inspired by Spring Framework. This project aims to implement the core features of dependency injection to understand how frameworks like Spring work under the hood.
+SpringLite is a minimalist dependency injection framework inspired by Spring Framework. It provides a deep understanding of how dependency injection works under the hood while maintaining a clean and simple API.
 
-## Goals
+## Overview
 
-- Create a simple yet functional dependency injection container
-- Support XML-based configuration
-- Support annotation-based configuration
-- Support different types of dependency injection:
-  - Constructor injection
-  - Setter injection
-  - Field injection
-- Handle bean lifecycles (singleton and prototype scopes)
-- Provide clear error messages for common issues
+SpringLite implements core dependency injection features:
 
-## Features
+- **Bean Management**: Define, register, and retrieve beans
+- **Multiple Configuration Options**: XML-based or annotation-based
+- **Flexible Injection Methods**: Constructor, setter, and field injection
+- **Bean Lifecycle Management**: Singleton and prototype scopes
+- **Robust Error Handling**: Clear error messages for common issues
 
-- Bean definition and registration
-- Bean retrieval via BeanFactory
-- Application context for managing the bean container
-- XML configuration parsing
-- Annotation-based bean discovery
-- Various injection mechanisms
+## Getting Started
 
-## XML-Based Configuration
+### Prerequisites
 
-XML-based configuration allows you to define beans and their dependencies in XML files:
+- Java 21 or later
+- Maven
+
+### Building the Project
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/springlite.git
+
+# Build with Maven
+cd springlite
+mvn clean install
+```
+
+## Using SpringLite
+
+### 1. XML-Based Configuration
+
+Create an XML configuration file (`beans.xml`):
 
 ```xml
+<?xml version="1.0" encoding="UTF-8"?>
 <beans>
     <!-- Simple bean definition -->
-    <bean id="myBean" class="com.example.MyBean" />
+    <bean id="userService" class="com.example.UserService" />
 
-    <!-- Bean with property injection -->
-    <bean id="beanWithDependency" class="com.example.DependentBean">
-        <property name="dependency" ref="myBean" />
+    <!-- Bean with constructor injection -->
+    <bean id="userController" class="com.example.UserController">
+        <property name="userService" ref="userService" />
     </bean>
 
-    <!-- Bean with value injection -->
-    <bean id="valueBean" class="com.example.ValueBean">
-        <property name="stringValue" value="Hello, SpringLite!" />
-        <property name="intValue" value="42" />
-    </property>
+    <!-- Bean with property values -->
+    <bean id="configService" class="com.example.ConfigService">
+        <property name="serverUrl" value="https://api.example.com" />
+        <property name="maxConnections" value="100" />
+    </bean>
 
     <!-- Bean with prototype scope -->
-    <bean id="prototypeBean" class="com.example.PrototypeBean" scope="prototype" />
+    <bean id="requestHandler" class="com.example.RequestHandler" scope="prototype" />
 </beans>
 ```
 
-## Annotation-Based Configuration
-
-SpringLite supports annotation-based configuration for a more modern approach:
-
-### 1. Component Scanning
-
-First, define your application context to scan specific packages:
+Load the beans in your application:
 
 ```java
-ApplicationContext context = new AnnotationApplicationContext("com.example");
+import com.bellagnech.springlite.di.ApplicationContext;
+import com.bellagnech.springlite.di.XmlApplicationContext;
+
+public class Application {
+    public static void main(String[] args) {
+        try {
+            // Initialize the context with XML configuration
+            ApplicationContext context = new XmlApplicationContext("path/to/beans.xml");
+
+            // Get a bean by ID
+            UserService userService = (UserService) context.getBean("userService");
+
+            // Get a bean with type safety
+            UserController controller = context.getBean("userController", UserController.class);
+
+            // Use the beans
+            controller.createUser("john.doe", "John Doe");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
 ```
 
-### 2. Component Definition
+### 2. Annotation-Based Configuration
 
-Mark your classes as components to be auto-detected:
+Define your beans with annotations:
 
 ```java
+import com.bellagnech.springlite.di.annotations.Component;
+import com.bellagnech.springlite.di.annotations.Autowired;
+import com.bellagnech.springlite.di.annotations.Qualifier;
+import com.bellagnech.springlite.di.annotations.Scope;
+
+// Simple component
 @Component
 public class UserService {
-    // Implementation
+    public User findUser(String username) {
+        // Implementation
+    }
 }
 
-// Specify a custom bean name
-@Component("authService")
-public class AuthenticationService {
-    // Implementation
-}
-
-// Create a prototype-scoped bean
-@Component
-@Scope("prototype")
-public class RequestHandler {
-    // A new instance will be created for each request
-}
-```
-
-### 3. Dependency Injection
-
-There are three ways to inject dependencies:
-
-#### Constructor Injection
-
-```java
+// Component with constructor injection
 @Component
 public class UserController {
     private final UserService userService;
@@ -99,103 +112,143 @@ public class UserController {
     public UserController(UserService userService) {
         this.userService = userService;
     }
+
+    // Business methods
+}
+
+// Component with setter injection
+@Component
+public class ProductService {
+    private CategoryService categoryService;
+
+    @Autowired
+    public void setCategoryService(CategoryService service) {
+        this.categoryService = service;
+    }
+}
+
+// Component with field injection
+@Component
+public class OrderService {
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    @Qualifier("jpaRepository")
+    private OrderRepository orderRepository;
+}
+
+// Prototype-scoped component
+@Component
+@Scope("prototype")
+public class RequestHandler {
+    // A new instance will be created each time it's requested
 }
 ```
 
-#### Setter Injection
+Load the beans in your application:
 
 ```java
-@Component
-public class ProductService {
-    private InventoryService inventoryService;
+import com.bellagnech.springlite.di.AnnotationApplicationContext;
+import com.bellagnech.springlite.di.ApplicationContext;
 
-    @Autowired
-    public void setInventoryService(InventoryService inventoryService) {
-        this.inventoryService = inventoryService;
+public class Application {
+    public static void main(String[] args) {
+        try {
+            // Initialize the context with package to scan
+            ApplicationContext context = new AnnotationApplicationContext("com.example");
+
+            // Get beans
+            UserController controller = context.getBean("userController", UserController.class);
+            OrderService orderService = context.getBean("orderService", OrderService.class);
+
+            // Every request gets a new instance
+            RequestHandler handler1 = context.getBean("requestHandler", RequestHandler.class);
+            RequestHandler handler2 = context.getBean("requestHandler", RequestHandler.class);
+
+            // handler1 != handler2 (different instances)
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
 ```
 
-#### Field Injection
+## Supported Injection Types
 
-```java
-@Component
-public class OrderController {
-    @Autowired
-    private OrderService orderService;
+SpringLite supports three types of dependency injection:
 
-    @Autowired
-    private PaymentService paymentService;
-}
-```
+### 1. Constructor Injection
 
-### 4. Qualifying Dependencies
+- **XML-based**: Use `<property>` elements in bean definition
+- **Annotation-based**: Use `@Autowired` on the constructor
 
-When multiple implementations of a type exist, use @Qualifier to disambiguate:
+Constructor injection is recommended for required dependencies as it enforces their presence at initialization.
 
-```java
-@Component
-public class NotificationService {
-    @Autowired
-    @Qualifier("emailSender")
-    private MessageSender messageSender;
-}
-```
+### 2. Setter Injection
+
+- **XML-based**: Use `<property>` elements in bean definition
+- **Annotation-based**: Use `@Autowired` on setter methods
+
+Setter injection is useful for optional dependencies or when circular dependencies exist.
+
+### 3. Field Injection
+
+- **XML-based**: Use `<property>` elements in bean definition
+- **Annotation-based**: Use `@Autowired` directly on fields
+
+Field injection is the simplest approach but makes unit testing more difficult.
+
+## Bean Scopes
+
+SpringLite supports two bean scopes:
+
+- **Singleton**: Default scope. Only one instance is created per context.
+- **Prototype**: A new instance is created each time the bean is requested.
 
 ## Error Handling
 
 SpringLite provides clear error messages for common issues:
 
-- Missing dependencies
-- Circular dependencies
-- No suitable constructor
-- Ambiguous autowiring
+- `NoSuchBeanDefinitionException`: When a bean with the given ID doesn't exist
+- `BeanCreationException`: When a bean cannot be created (e.g., missing class)
+- `CircularDependencyException`: When circular dependencies are detected
 
-## Complete Example
+## Logging
 
-Here's a complete example of using SpringLite with annotations:
+SpringLite includes a simple logging utility that helps diagnose issues:
 
 ```java
-// Define your components
-@Component
-public class MessageService {
-    public String getMessage() {
-        return "Hello from MessageService";
-    }
-}
+// Configure logging level
+Logger.setLevel(Logger.Level.DEBUG);
 
-@Component
-public class UserService {
-    private final MessageService messageService;
-
-    @Autowired
-    public UserService(MessageService messageService) {
-        this.messageService = messageService;
-    }
-
-    public String getWelcomeMessage(String username) {
-        return messageService.getMessage() + " - Welcome, " + username + "!";
-    }
-}
-
-// Use the application context
-public class Application {
-    public static void main(String[] args) throws Exception {
-        ApplicationContext context = new AnnotationApplicationContext("com.example");
-
-        UserService userService = (UserService) context.getBean("userService");
-        System.out.println(userService.getWelcomeMessage("John"));
-    }
-}
+// Or disable logging for tests
+Logger.disable();
 ```
 
-## Project Structure
+## Advanced Features
 
-The core components are:
+- **Qualifier Support**: Use `@Qualifier` to disambiguate when multiple beans of the same type exist
+- **Type Conversion**: Automatic conversion of string values to the required property types
+- **Circular Dependency Detection**: Detects and reports circular dependencies with clear messages
 
-- `BeanFactory`: Interface for accessing beans
-- `ApplicationContext`: Extended interface for configuration
-- `BeanDefinition`: Class to hold bean metadata
-- XML support: `XmlApplicationContext` and `XmlBeanDefinitionReader`
-- Annotation support: `AnnotationApplicationContext` and annotations package
-- Annotations: `@Component`, `@Autowired`, `@Qualifier`, `@Scope`
+## Example Application
+
+See the `com.bellagnech.springlite.examples` package for a complete working example of both XML and annotation-based configuration.
+
+## Limitations
+
+This framework is for educational purposes and has some limitations:
+
+- No AOP (Aspect-Oriented Programming) support
+- Limited validation and error handling compared to Spring
+- No property placeholders or environment profiles
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
