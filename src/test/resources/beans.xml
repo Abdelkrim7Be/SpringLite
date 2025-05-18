@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans>
+    <!-- Simple bean definition without dependencies -->
+    <bean id="simpleBean" class="com.bellagnech.springlite.test.SimpleBean" />
+    
+    <!-- Bean with constructor injection -->
+    <bean id="constructorInjectionBean" class="com.bellagnech.springlite.test.ConstructorInjectionBean">
+        <property name="dependency" ref="simpleBean" />
+    </bean>
+    
+    <!-- Bean with setter injection -->
+    <bean id="setterInjectionBean" class="com.bellagnech.springlite.test.SetterInjectionBean">
+        <property name="dependency" ref="simpleBean" />
+    </bean>
+    
+    <!-- Bean with primitive property values -->
+    <bean id="valueBean" class="com.bellagnech.springlite.test.ValueBean">
+        <property name="stringValue" value="Hello, Spring Lite!" />
+        <property name="intValue" value="42" />
+    </bean>
+    
+    <!-- Bean with prototype scope -->
+    <bean id="prototypeBean" class="com.bellagnech.springlite.test.PrototypeBean" scope="prototype" />
+</beans>
