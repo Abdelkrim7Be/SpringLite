@@ -41,7 +41,7 @@ XML-based configuration allows you to define beans and their dependencies in XML
     <bean id="valueBean" class="com.example.ValueBean">
         <property name="stringValue" value="Hello, SpringLite!" />
         <property name="intValue" value="42" />
-    </bean>
+    </property>
 
     <!-- Bean with prototype scope -->
     <bean id="prototypeBean" class="com.example.PrototypeBean" scope="prototype" />
@@ -50,79 +50,144 @@ XML-based configuration allows you to define beans and their dependencies in XML
 
 ## Annotation-Based Configuration
 
-SpringLite also supports annotation-based configuration:
+SpringLite supports annotation-based configuration for a more modern approach:
 
-1. Mark your beans with `@Component`:
+### 1. Component Scanning
+
+First, define your application context to scan specific packages:
+
+```java
+ApplicationContext context = new AnnotationApplicationContext("com.example");
+```
+
+### 2. Component Definition
+
+Mark your classes as components to be auto-detected:
 
 ```java
 @Component
-public class MyService {
-    // Bean implementation
+public class UserService {
+    // Implementation
 }
-```
 
-2. Inject dependencies using `@Autowired`:
-
-```java
-@Component
-public class MyController {
-    private final MyService service;
-
-    // Constructor injection
-    @Autowired
-    public MyController(MyService service) {
-        this.service = service;
-    }
-
-    // OR field injection
-    @Autowired
-    private MyService service;
-
-    // OR setter injection
-    @Autowired
-    public void setService(MyService service) {
-        this.service = service;
-    }
+// Specify a custom bean name
+@Component("authService")
+public class AuthenticationService {
+    // Implementation
 }
-```
 
-3. Use `@Qualifier` when multiple beans of the same type exist:
-
-```java
-@Component
-public class MyController {
-    @Autowired
-    @Qualifier("specificServiceImpl")
-    private MyService service;
-}
-```
-
-4. Specify scope with `@Scope`:
-
-```java
+// Create a prototype-scoped bean
 @Component
 @Scope("prototype")
-public class PrototypeBean {
-    // This bean will be instantiated every time it's requested
+public class RequestHandler {
+    // A new instance will be created for each request
 }
 ```
 
-## Usage
+### 3. Dependency Injection
 
-To use the SpringLite framework in your application:
+There are three ways to inject dependencies:
+
+#### Constructor Injection
 
 ```java
-// For XML-based configuration
-ApplicationContext context = new XmlApplicationContext("classpath:beans.xml");
+@Component
+public class UserController {
+    private final UserService userService;
 
-// For annotation-based configuration (coming soon)
-ApplicationContext context = new AnnotationApplicationContext("com.example.package");
-
-// Get a bean from the context
-MyBean myBean = (MyBean) context.getBean("myBean");
+    @Autowired
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+}
 ```
 
-More details coming soon as the project progresses.
+#### Setter Injection
+
+```java
+@Component
+public class ProductService {
+    private InventoryService inventoryService;
+
+    @Autowired
+    public void setInventoryService(InventoryService inventoryService) {
+        this.inventoryService = inventoryService;
+    }
+}
+```
+
+#### Field Injection
+
+```java
+@Component
+public class OrderController {
+    @Autowired
+    private OrderService orderService;
+
+    @Autowired
+    private PaymentService paymentService;
+}
+```
+
+### 4. Qualifying Dependencies
+
+When multiple implementations of a type exist, use @Qualifier to disambiguate:
+
+```java
+@Component
+public class NotificationService {
+    @Autowired
+    @Qualifier("emailSender")
+    private MessageSender messageSender;
+}
+```
+
+## Error Handling
+
+SpringLite provides clear error messages for common issues:
+
+- Missing dependencies
+- Circular dependencies
+- No suitable constructor
+- Ambiguous autowiring
+
+## Complete Example
+
+Here's a complete example of using SpringLite with annotations:
+
+```java
+// Define your components
+@Component
+public class MessageService {
+    public String getMessage() {
+        return "Hello from MessageService";
+    }
+}
+
+@Component
+public class UserService {
+    private final MessageService messageService;
+
+    @Autowired
+    public UserService(MessageService messageService) {
+        this.messageService = messageService;
+    }
+
+    public String getWelcomeMessage(String username) {
+        return messageService.getMessage() + " - Welcome, " + username + "!";
+    }
+}
+
+// Use the application context
+public class Application {
+    public static void main(String[] args) throws Exception {
+        ApplicationContext context = new AnnotationApplicationContext("com.example");
+
+        UserService userService = (UserService) context.getBean("userService");
+        System.out.println(userService.getWelcomeMessage("John"));
+    }
+}
+```
 
 ## Project Structure
 
@@ -131,4 +196,6 @@ The core components are:
 - `BeanFactory`: Interface for accessing beans
 - `ApplicationContext`: Extended interface for configuration
 - `BeanDefinition`: Class to hold bean metadata
+- XML support: `XmlApplicationContext` and `XmlBeanDefinitionReader`
+- Annotation support: `AnnotationApplicationContext` and annotations package
 - Annotations: `@Component`, `@Autowired`, `@Qualifier`, `@Scope`
