@@ -2,7 +2,6 @@ package com.bellagnech.springlite.test.advanced;
 
 import com.bellagnech.springlite.di.annotations.Autowired;
 import com.bellagnech.springlite.di.annotations.Component;
-import com.bellagnech.springlite.di.annotations.Qualifier;
 
 @Component
 public class ServiceC {

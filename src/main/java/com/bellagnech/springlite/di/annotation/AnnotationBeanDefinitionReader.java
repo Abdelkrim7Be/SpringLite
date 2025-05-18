@@ -1,5 +1,6 @@
 package com.bellagnech.springlite.di.annotation;
 
+import com.bellagnech.springlite.di.BeanCreationException;
 import com.bellagnech.springlite.di.BeanDefinition;
 import com.bellagnech.springlite.di.BeanDefinitionRegistry;
 import com.bellagnech.springlite.di.annotations.Component;
@@ -52,8 +53,9 @@ public class AnnotationBeanDefinitionReader {
      * Register a bean definition from the annotated class.
      * 
      * @param clazz the annotated class
+     * @throws BeanCreationException if bean registration fails
      */
-    private void registerBeanDefinition(Class<?> clazz) {
+    private void registerBeanDefinition(Class<?> clazz) throws BeanCreationException {
         BeanDefinition beanDefinition = new BeanDefinition();
         beanDefinition.setClassName(clazz.getName());
         

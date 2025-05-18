@@ -1,5 +1,6 @@
 package com.bellagnech.springlite.di;
 
+import com.bellagnech.springlite.di.util.Logger;
 import com.bellagnech.springlite.di.xml.XmlBeanDefinitionReader;
 
 import java.io.InputStream;
@@ -17,6 +18,8 @@ import java.util.Set;
  */
 public class XmlApplicationContext implements ApplicationContext, BeanDefinitionRegistry {
     
+    private static final Logger logger = Logger.getLogger(XmlApplicationContext.class);
+    
     private final Map<String, BeanDefinition> beanDefinitionMap = new HashMap<>();
     private final Map<String, Object> singletonObjects = new HashMap<>();
     private final XmlBeanDefinitionReader beanDefinitionReader;
@@ -29,6 +32,8 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
      * @param configLocations the XML configuration file paths
      */
     public XmlApplicationContext(String... configLocations) throws Exception {
+        logger.info("Initializing XmlApplicationContext with " + 
+                   (configLocations != null ? configLocations.length : 0) + " config locations");
         this.configLocations = configLocations;
         this.beanDefinitionReader = new XmlBeanDefinitionReader(this);
         refresh();
@@ -40,6 +45,7 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
      * @param inputStream the XML configuration input stream
      */
     public XmlApplicationContext(InputStream inputStream) throws Exception {
+        logger.info("Initializing XmlApplicationContext with input stream");
         this.configLocations = null;
         this.beanDefinitionReader = new XmlBeanDefinitionReader(this);
         loadBeanDefinitions(inputStream);
@@ -52,47 +58,140 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
      * @param inputStream the XML configuration input stream
      */
     private void loadBeanDefinitions(InputStream inputStream) throws Exception {
+        logger.debug("Loading bean definitions from input stream");
         beanDefinitionReader.loadBeanDefinitions(inputStream);
     }
     
     @Override
     public void refresh() throws Exception {
+        logger.info("Refreshing XmlApplicationContext");
+        
         // Clear the singleton cache
         this.singletonObjects.clear();
         
         // Load bean definitions from XML config files
         if (configLocations != null) {
             for (String configLocation : configLocations) {
+                logger.debug("Loading bean definitions from location: " + configLocation);
                 beanDefinitionReader.loadBeanDefinitions(configLocation);
             }
         }
         
+        // Validate bean definitions
+        validateBeanDefinitions();
+        
         // Instantiate all singleton beans
-        for (String beanName : beanDefinitionMap.keySet()) {
+        logger.info("Instantiating singleton beans");
+        String[] beanNames = getBeanDefinitionNames();
+        for (String beanName : beanNames) {
             BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
             if ("singleton".equals(beanDefinition.getScope())) {
-                getBean(beanName);
+                try {
+                    getBean(beanName);
+                } catch (BeanCreationException e) {
+                    logger.error("Error creating singleton bean '" + beanName + "'", e);
+                    throw e;
+                }
+            }
+        }
+        
+        logger.info("XmlApplicationContext refresh completed with " + beanDefinitionMap.size() + " bean definitions");
+    }
+    
+    /**
+     * Validate bean definitions for correctness.
+     */
+    private void validateBeanDefinitions() throws BeanCreationException {
+        logger.debug("Validating bean definitions");
+        
+        for (Map.Entry<String, BeanDefinition> entry : beanDefinitionMap.entrySet()) {
+            String beanName = entry.getKey();
+            BeanDefinition bd = entry.getValue();
+            
+            // Check required fields
+            if (bd.getClassName() == null || bd.getClassName().isEmpty()) {
+                throw new BeanCreationException(beanName, "Bean class name is required");
+            }
+            
+            // Validate class exists
+            try {
+                Class.forName(bd.getClassName());
+            } catch (ClassNotFoundException e) {
+                throw new BeanCreationException(beanName, 
+                    "Bean class not found: " + bd.getClassName(), e);
+            }
+            
+            // Validate property references
+            for (PropertyValue pv : bd.getPropertyValues()) {
+                if (pv.isRef()) {
+                    String refBeanName = (String) pv.getValue();
+                    if (!containsBeanDefinition(refBeanName)) {
+                        throw new BeanCreationException(beanName, 
+                            "Property '" + pv.getName() + "' references undefined bean: " + refBeanName);
+                    }
+                }
             }
         }
     }
     
     @Override
-    public Object getBean(String id) throws Exception {
-        BeanDefinition beanDefinition = getBeanDefinition(id);
+    public Object getBean(String id) throws NoSuchBeanDefinitionException, BeanCreationException {
+        logger.debug("Getting bean with id: " + id);
+        
+        // Check if bean definition exists
+        BeanDefinition beanDefinition;
+        try {
+            beanDefinition = getBeanDefinition(id);
+        } catch (NoSuchBeanDefinitionException e) {
+            logger.error("No bean definition found for: " + id);
+            throw e;
+        }
         
         // If bean is a prototype, always create a new instance
         if ("prototype".equals(beanDefinition.getScope())) {
-            return createBean(beanDefinition);
+            logger.debug("Creating new prototype instance for bean: " + id);
+            try {
+                return createBean(beanDefinition);
+            } catch (Exception e) {
+                logger.error("Error creating prototype bean: " + id, e);
+                throw new BeanCreationException(id, "Error creating prototype bean", e);
+            }
         }
         
         // For singleton beans, check if already instantiated
         Object singleton = this.singletonObjects.get(id);
         if (singleton == null) {
-            singleton = createBean(beanDefinition);
-            this.singletonObjects.put(id, singleton);
+            logger.debug("Creating singleton instance for bean: " + id);
+            try {
+                singleton = createBean(beanDefinition);
+                this.singletonObjects.put(id, singleton);
+            } catch (Exception e) {
+                logger.error("Error creating singleton bean: " + id, e);
+                throw new BeanCreationException(id, "Error creating singleton bean", e);
+            }
+        } else {
+            logger.debug("Returning existing singleton instance for bean: " + id);
         }
         
         return singleton;
+    }
+    
+    @Override
+    public <T> T getBean(String id, Class<T> requiredType) throws NoSuchBeanDefinitionException, BeanCreationException {
+        Object bean = getBean(id);
+        
+        if (requiredType != null && !requiredType.isInstance(bean)) {
+            throw new BeanCreationException(id, 
+                "Bean is not of required type " + requiredType.getName() + 
+                ", actual type is " + bean.getClass().getName());
+        }
+        
+        return requiredType.cast(bean);
+    }
+    
+    @Override
+    public boolean containsBean(String id) {
+        return containsBeanDefinition(id);
     }
     
     /**
@@ -103,10 +202,12 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
      */
     protected Object createBean(BeanDefinition beanDefinition) throws Exception {
         String beanId = beanDefinition.getId();
+        logger.debug("Creating bean: " + beanId);
         
         // Check for circular dependencies
         if (currentlyCreatingBeans.contains(beanId)) {
-            throw new Exception("Circular reference detected for bean: " + beanId);
+            logger.error("Circular reference detected for bean: " + beanId);
+            throw new CircularDependencyException(beanId, new HashSet<>(currentlyCreatingBeans));
         }
         
         try {
@@ -115,12 +216,15 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
             
             // Load the bean class
             Class<?> beanClass = Class.forName(beanDefinition.getClassName());
+            logger.debug("Loaded class: " + beanClass.getName());
             
             // Create a new instance
             Object beanInstance = instantiateBean(beanClass);
+            logger.debug("Instantiated bean: " + beanId);
             
             // Inject dependencies
             injectDependencies(beanInstance, beanDefinition);
+            logger.debug("Injected dependencies for bean: " + beanId);
             
             return beanInstance;
         } finally {
@@ -129,12 +233,47 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
         }
     }
     
-    /**
-     * Instantiate a bean of the given class.
-     * 
-     * @param beanClass the bean class
-     * @return the bean instance
-     */
+    // BeanDefinitionRegistry implementation
+    
+    @Override
+    public void registerBeanDefinition(BeanDefinition beanDefinition) throws BeanCreationException {
+        String beanId = beanDefinition.getId();
+        if (beanId == null || beanId.isEmpty()) {
+            throw new BeanCreationException(beanId, "Bean ID cannot be null or empty");
+        }
+        
+        if (containsBeanDefinition(beanId)) {
+            logger.warn("Overriding bean definition for bean '" + beanId + "'");
+        }
+        
+        logger.debug("Registering bean definition: " + beanId);
+        beanDefinitionMap.put(beanId, beanDefinition);
+    }
+    
+    @Override
+    public BeanDefinition getBeanDefinition(String beanId) throws NoSuchBeanDefinitionException {
+        BeanDefinition bd = beanDefinitionMap.get(beanId);
+        if (bd == null) {
+            throw new NoSuchBeanDefinitionException(beanId);
+        }
+        return bd;
+    }
+    
+    @Override
+    public boolean containsBeanDefinition(String beanId) {
+        return beanDefinitionMap.containsKey(beanId);
+    }
+    
+    @Override
+    public String[] getBeanDefinitionNames() {
+        return beanDefinitionMap.keySet().toArray(new String[0]);
+    }
+    
+    @Override
+    public Map<String, BeanDefinition> getBeanDefinitions() {
+        return Map.copyOf(beanDefinitionMap);
+    }
+    
     private Object instantiateBean(Class<?> beanClass) throws Exception {
         try {
             // Try to get the default constructor
@@ -154,12 +293,6 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
         }
     }
     
-    /**
-     * Inject dependencies into the bean instance.
-     * 
-     * @param beanInstance the bean instance
-     * @param beanDefinition the bean definition
-     */
     private void injectDependencies(Object beanInstance, BeanDefinition beanDefinition) throws Exception {
         for (PropertyValue propertyValue : beanDefinition.getPropertyValues()) {
             String propertyName = propertyValue.getName();
@@ -181,14 +314,6 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
         }
     }
     
-    /**
-     * Inject a dependency using a setter method.
-     * 
-     * @param beanInstance the bean instance
-     * @param propertyName the property name
-     * @param value the property value
-     * @return true if injection was successful
-     */
     private boolean injectBySetterMethod(Object beanInstance, String propertyName, Object value) throws Exception {
         Class<?> beanClass = beanInstance.getClass();
         
@@ -216,13 +341,6 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
         return false;
     }
     
-    /**
-     * Inject a dependency using field injection.
-     * 
-     * @param beanInstance the bean instance
-     * @param propertyName the property name
-     * @param value the property value
-     */
     private void injectByField(Object beanInstance, String propertyName, Object value) throws Exception {
         Class<?> beanClass = beanInstance.getClass();
         
@@ -246,13 +364,6 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
         }
     }
     
-    /**
-     * Find a field with the given name in the class hierarchy.
-     * 
-     * @param clazz the class to search
-     * @param fieldName the field name
-     * @return the field or null if not found
-     */
     private Field findField(Class<?> clazz, String fieldName) {
         Class<?> searchType = clazz;
         while (searchType != null && !Object.class.equals(searchType)) {
@@ -267,13 +378,6 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
         return null;
     }
     
-    /**
-     * Convert the value to the required type if needed.
-     * 
-     * @param value the original value
-     * @param requiredType the required type
-     * @return the converted value
-     */
     private Object convertValueIfNeeded(Object value, Class<?> requiredType) {
         if (value == null || requiredType.isInstance(value)) {
             return value;
@@ -306,41 +410,5 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
         
         // If no conversion was possible, return the original value
         return value;
-    }
-    
-    // BeanDefinitionRegistry implementation
-    
-    @Override
-    public void registerBeanDefinition(BeanDefinition beanDefinition) {
-        String beanId = beanDefinition.getId();
-        if (beanId == null || beanId.isEmpty()) {
-            throw new IllegalArgumentException("Bean ID cannot be null or empty");
-        }
-        
-        beanDefinitionMap.put(beanId, beanDefinition);
-    }
-    
-    @Override
-    public BeanDefinition getBeanDefinition(String beanId) throws Exception {
-        BeanDefinition bd = beanDefinitionMap.get(beanId);
-        if (bd == null) {
-            throw new Exception("No bean definition found for bean ID: " + beanId);
-        }
-        return bd;
-    }
-    
-    @Override
-    public boolean containsBeanDefinition(String beanId) {
-        return beanDefinitionMap.containsKey(beanId);
-    }
-    
-    @Override
-    public String[] getBeanDefinitionNames() {
-        return beanDefinitionMap.keySet().toArray(new String[0]);
-    }
-    
-    @Override
-    public Map<String, BeanDefinition> getBeanDefinitions() {
-        return Map.copyOf(beanDefinitionMap);
     }
 }

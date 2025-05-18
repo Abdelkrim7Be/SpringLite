@@ -13,20 +13,20 @@ public class DefaultBeanDefinitionRegistry implements BeanDefinitionRegistry {
     private final Map<String, BeanDefinition> beanDefinitionMap = new HashMap<>();
     
     @Override
-    public void registerBeanDefinition(BeanDefinition beanDefinition) {
+    public void registerBeanDefinition(BeanDefinition beanDefinition) throws BeanCreationException {
         String beanId = beanDefinition.getId();
         if (beanId == null || beanId.isEmpty()) {
-            throw new IllegalArgumentException("Bean ID cannot be null or empty");
+            throw new BeanCreationException(beanId, "Bean ID cannot be null or empty");
         }
         
         beanDefinitionMap.put(beanId, beanDefinition);
     }
     
     @Override
-    public BeanDefinition getBeanDefinition(String beanId) throws Exception {
+    public BeanDefinition getBeanDefinition(String beanId) throws NoSuchBeanDefinitionException {
         BeanDefinition bd = beanDefinitionMap.get(beanId);
         if (bd == null) {
-            throw new Exception("No bean definition found for bean ID: " + beanId);
+            throw new NoSuchBeanDefinitionException(beanId);
         }
         return bd;
     }

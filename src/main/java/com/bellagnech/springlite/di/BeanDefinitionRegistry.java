@@ -12,17 +12,18 @@ public interface BeanDefinitionRegistry {
      * Register a new bean definition with this registry.
      * 
      * @param beanDefinition the bean definition to register
+     * @throws BeanCreationException if the bean definition is invalid or registration fails
      */
-    void registerBeanDefinition(BeanDefinition beanDefinition);
+    void registerBeanDefinition(BeanDefinition beanDefinition) throws BeanCreationException;
     
     /**
      * Return the BeanDefinition for the given bean id.
      * 
      * @param beanId the bean id to look up
      * @return the BeanDefinition for the given name (never null)
-     * @throws Exception if no such bean definition exists
+     * @throws NoSuchBeanDefinitionException if no such bean definition exists
      */
-    BeanDefinition getBeanDefinition(String beanId) throws Exception;
+    BeanDefinition getBeanDefinition(String beanId) throws NoSuchBeanDefinitionException;
     
     /**
      * Check if this registry contains a bean definition with the given id.

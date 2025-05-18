@@ -1,5 +1,6 @@
 package com.bellagnech.springlite.di.xml;
 
+import com.bellagnech.springlite.di.BeanCreationException;
 import com.bellagnech.springlite.di.BeanDefinition;
 import com.bellagnech.springlite.di.BeanDefinitionRegistry;
 import com.bellagnech.springlite.di.PropertyValue;
@@ -69,7 +70,7 @@ public class XmlBeanDefinitionReader {
      * 
      * @param document the parsed XML document
      */
-    private void processBeanDefinitions(Document document) {
+    private void processBeanDefinitions(Document document) throws BeanCreationException {
         NodeList beanNodes = document.getElementsByTagName("bean");
         
         for (int i = 0; i < beanNodes.getLength(); i++) {
