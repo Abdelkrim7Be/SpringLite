@@ -1,9 +1,7 @@
 package com.bellagnech.springlite.di.xml;
 
-import jakarta.xml.bind.annotation.XmlAttribute;
-
 /**
- * JAXB class to represent a property element in XML configuration.
+ * Class to represent a property element in XML configuration.
  * Maps to the <property> element in XML.
  */
 public class PropertyElement {
@@ -12,7 +10,6 @@ public class PropertyElement {
     private String value;
     private String ref;
     
-    @XmlAttribute(required = true)
     public String getName() {
         return name;
     }
@@ -21,7 +18,6 @@ public class PropertyElement {
         this.name = name;
     }
     
-    @XmlAttribute
     public String getValue() {
         return value;
     }
@@ -30,7 +26,6 @@ public class PropertyElement {
         this.value = value;
     }
     
-    @XmlAttribute
     public String getRef() {
         return ref;
     }

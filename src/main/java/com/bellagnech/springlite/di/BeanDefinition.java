@@ -1,5 +1,8 @@
 package com.bellagnech.springlite.di;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * A bean definition describes the metadata of a bean.
  * It contains details like the bean class name, id, and scope.
@@ -9,6 +12,7 @@ public class BeanDefinition {
     private String id;
     private String className;
     private String scope = "singleton"; // Default scope
+    private List<PropertyValue> propertyValues = new ArrayList<>();
     
     public BeanDefinition() {
     }
@@ -48,12 +52,31 @@ public class BeanDefinition {
         this.scope = scope;
     }
     
+    /**
+     * Add a property value to this bean definition.
+     * 
+     * @param propertyValue the property value to add
+     */
+    public void addPropertyValue(PropertyValue propertyValue) {
+        this.propertyValues.add(propertyValue);
+    }
+    
+    /**
+     * Get all property values for this bean definition.
+     * 
+     * @return the list of property values
+     */
+    public List<PropertyValue> getPropertyValues() {
+        return propertyValues;
+    }
+    
     @Override
     public String toString() {
         return "BeanDefinition{" +
                 "id='" + id + '\'' +
                 ", className='" + className + '\'' +
                 ", scope='" + scope + '\'' +
+                ", propertyValues=" + propertyValues +
                 '}';
     }
 }

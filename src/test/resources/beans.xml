@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans>
     <!-- Simple bean definition without dependencies -->
-    <bean id="simpleBean" class="com.bellagnech.springlite.test.SimpleBean" />
+    <bean id="simpleBean" class="com.bellagnech.springlite.test.SimpleBean">
+        <property name="message" value="Hello from XML configuration!" />
+    </bean>
     
     <!-- Bean with constructor injection -->
     <bean id="constructorInjectionBean" class="com.bellagnech.springlite.test.ConstructorInjectionBean">
@@ -10,6 +12,11 @@
     
     <!-- Bean with setter injection -->
     <bean id="setterInjectionBean" class="com.bellagnech.springlite.test.SetterInjectionBean">
+        <property name="dependency" ref="simpleBean" />
+    </bean>
+    
+    <!-- Bean with field injection -->
+    <bean id="fieldInjectionBean" class="com.bellagnech.springlite.test.FieldInjectionBean">
         <property name="dependency" ref="simpleBean" />
     </bean>
     

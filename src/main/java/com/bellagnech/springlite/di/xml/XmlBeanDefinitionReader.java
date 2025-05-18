@@ -2,20 +2,25 @@ package com.bellagnech.springlite.di.xml;
 
 import com.bellagnech.springlite.di.BeanDefinition;
 import com.bellagnech.springlite.di.BeanDefinitionRegistry;
-import jakarta.xml.bind.JAXBContext;
-import jakarta.xml.bind.JAXBException;
-import jakarta.xml.bind.Unmarshaller;
+import com.bellagnech.springlite.di.PropertyValue;
 
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Bean definition reader for XML bean definitions.
- * Reads XML bean configuration using JAXB and registers bean definitions with the registry.
+ * Reads XML bean configuration using DOM and registers bean definitions with the registry.
  */
 public class XmlBeanDefinitionReader {
     
@@ -48,34 +53,66 @@ public class XmlBeanDefinitionReader {
      */
     public void loadBeanDefinitions(InputStream inputStream) throws Exception {
         try {
-            JAXBContext jaxbContext = JAXBContext.newInstance(BeansDefinition.class);
-            Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-            BeansDefinition beansDefinition = (BeansDefinition) jaxbUnmarshaller.unmarshal(inputStream);
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.parse(inputStream);
+            document.getDocumentElement().normalize();
             
-            processBeanDefinitions(beansDefinition);
-        } catch (JAXBException e) {
+            processBeanDefinitions(document);
+        } catch (ParserConfigurationException | SAXException | IOException e) {
             throw new Exception("Error parsing XML bean definitions", e);
         }
     }
     
     /**
-     * Process bean definitions from the parsed XML.
+     * Process bean definitions from the parsed XML document.
      * 
-     * @param beansDefinition the parsed beans definition object
+     * @param document the parsed XML document
      */
-    private void processBeanDefinitions(BeansDefinition beansDefinition) {
-        List<BeanElement> beanElements = beansDefinition.getBeans();
+    private void processBeanDefinitions(Document document) {
+        NodeList beanNodes = document.getElementsByTagName("bean");
         
-        for (BeanElement beanElement : beanElements) {
-            BeanDefinition beanDefinition = new BeanDefinition();
-            beanDefinition.setId(beanElement.getId());
-            beanDefinition.setClassName(beanElement.getClassName());
-            beanDefinition.setScope(beanElement.getScope());
+        for (int i = 0; i < beanNodes.getLength(); i++) {
+            Node beanNode = beanNodes.item(i);
             
-            // Additional metadata can be stored for properties
-            // This will be used in the next chunk for dependency injection
-            
-            registry.registerBeanDefinition(beanDefinition);
+            if (beanNode.getNodeType() == Node.ELEMENT_NODE) {
+                Element beanElement = (Element) beanNode;
+                
+                String id = beanElement.getAttribute("id");
+                String className = beanElement.getAttribute("class");
+                String scope = beanElement.getAttribute("scope");
+                
+                BeanDefinition beanDefinition = new BeanDefinition();
+                beanDefinition.setId(id);
+                beanDefinition.setClassName(className);
+                if (scope != null && !scope.isEmpty()) {
+                    beanDefinition.setScope(scope);
+                }
+                
+                // Process property elements
+                NodeList propertyNodes = beanElement.getElementsByTagName("property");
+                for (int j = 0; j < propertyNodes.getLength(); j++) {
+                    Node propertyNode = propertyNodes.item(j);
+                    
+                    if (propertyNode.getNodeType() == Node.ELEMENT_NODE) {
+                        Element propertyElement = (Element) propertyNode;
+                        
+                        String name = propertyElement.getAttribute("name");
+                        String value = propertyElement.getAttribute("value");
+                        String ref = propertyElement.getAttribute("ref");
+                        
+                        if (ref != null && !ref.isEmpty()) {
+                            // This is a reference to another bean
+                            beanDefinition.addPropertyValue(new PropertyValue(name, ref, true));
+                        } else if (value != null && !value.isEmpty()) {
+                            // This is a value
+                            beanDefinition.addPropertyValue(new PropertyValue(name, value));
+                        }
+                    }
+                }
+                
+                registry.registerBeanDefinition(beanDefinition);
+            }
         }
     }
 }

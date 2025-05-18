@@ -1,12 +1,10 @@
 package com.bellagnech.springlite.di.xml;
 
-import jakarta.xml.bind.annotation.XmlAttribute;
-import jakarta.xml.bind.annotation.XmlElement;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * JAXB class to represent a bean element in XML configuration.
+ * Class to represent a bean element in XML configuration.
  * Maps to the <bean> element in XML.
  */
 public class BeanElement {
@@ -16,7 +14,6 @@ public class BeanElement {
     private String scope = "singleton";
     private List<PropertyElement> properties = new ArrayList<>();
     
-    @XmlAttribute(required = true)
     public String getId() {
         return id;
     }
@@ -25,7 +22,6 @@ public class BeanElement {
         this.id = id;
     }
     
-    @XmlAttribute(name = "class", required = true)
     public String getClassName() {
         return className;
     }
@@ -34,7 +30,6 @@ public class BeanElement {
         this.className = className;
     }
     
-    @XmlAttribute
     public String getScope() {
         return scope;
     }
@@ -43,7 +38,6 @@ public class BeanElement {
         this.scope = scope;
     }
     
-    @XmlElement(name = "property")
     public List<PropertyElement> getProperties() {
         return properties;
     }
