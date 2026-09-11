@@ -1,4 +1,4 @@
-# SpringLite
+<h1 align="center">SpringLite</h1>
 
 <p align="center">
   <strong>A small dependency injection container built to understand Spring fundamentals.</strong>
