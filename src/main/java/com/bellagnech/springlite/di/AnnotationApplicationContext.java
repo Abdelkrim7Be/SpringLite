@@ -27,8 +27,8 @@ public class AnnotationApplicationContext implements ApplicationContext, BeanDef
     private final Map<String, Object> singletonObjects = new HashMap<>();
     private final AnnotationBeanDefinitionReader beanDefinitionReader;
     private final String[] basePackages;
-    private final Set<String> currentlyCreatingBeans = new HashSet<>(); // For circular dependency detection
-    private final Map<Class<?>, String> typeToBeanNameMap = new HashMap<>(); // For type-based autowiring
+    private final Set<String> currentlyCreatingBeans = new HashSet<>();
+    private final Map<Class<?>, String> typeToBeanNameMap = new HashMap<>();
     
     /**
      * Create a new AnnotationApplicationContext with the given base packages to scan.
@@ -47,11 +47,9 @@ public class AnnotationApplicationContext implements ApplicationContext, BeanDef
     public void refresh() throws Exception {
         logger.info("Refreshing AnnotationApplicationContext");
         
-        // Clear the singleton cache
         this.singletonObjects.clear();
         this.typeToBeanNameMap.clear();
         
-        // Scan packages for bean definitions
         if (basePackages != null) {
             for (String basePackage : basePackages) {
                 logger.debug("Scanning package: " + basePackage);
@@ -59,26 +57,9 @@ public class AnnotationApplicationContext implements ApplicationContext, BeanDef
             }
         }
         
-        // Build a map of types to bean names for autowiring by type
         buildTypeToBeanNameMap();
         
-        // Validate bean definitions
         validateBeanDefinitions();
-        
-        // Instantiate all singleton beans
-        logger.info("Instantiating singleton beans");
-        String[] beanNames = getBeanDefinitionNames();
-        for (String beanName : beanNames) {
-            BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
-            if ("singleton".equals(beanDefinition.getScope())) {
-                try {
-                    getBean(beanName);
-                } catch (BeanCreationException e) {
-                    logger.error("Error creating singleton bean '" + beanName + "'", e);
-                    throw e;
-                }
-            }
-        }
         
         logger.info("AnnotationApplicationContext refresh completed with " + 
                     beanDefinitionMap.size() + " bean definitions");
@@ -145,7 +126,6 @@ public class AnnotationApplicationContext implements ApplicationContext, BeanDef
     public Object getBean(String id) throws NoSuchBeanDefinitionException, BeanCreationException {
         logger.debug("Getting bean with id: " + id);
         
-        // Check if bean definition exists
         BeanDefinition beanDefinition;
         try {
             beanDefinition = getBeanDefinition(id);
@@ -154,24 +134,26 @@ public class AnnotationApplicationContext implements ApplicationContext, BeanDef
             throw e;
         }
         
-        // If bean is a prototype, always create a new instance
         if ("prototype".equals(beanDefinition.getScope())) {
             logger.debug("Creating new prototype instance for bean: " + id);
             try {
                 return createBean(beanDefinition);
+            } catch (CircularDependencyException e) {
+                throw e;
             } catch (Exception e) {
                 logger.error("Error creating prototype bean: " + id, e);
                 throw new BeanCreationException(id, "Error creating prototype bean", e);
             }
         }
         
-        // For singleton beans, check if already instantiated
         Object singleton = this.singletonObjects.get(id);
         if (singleton == null) {
             logger.debug("Creating singleton instance for bean: " + id);
             try {
                 singleton = createBean(beanDefinition);
                 this.singletonObjects.put(id, singleton);
+            } catch (CircularDependencyException e) {
+                throw e;
             } catch (Exception e) {
                 logger.error("Error creating singleton bean: " + id, e);
                 throw new BeanCreationException(id, "Error creating singleton bean", e);
@@ -211,39 +193,29 @@ public class AnnotationApplicationContext implements ApplicationContext, BeanDef
         String beanId = beanDefinition.getId();
         logger.debug("Creating bean: " + beanId);
         
-        // Check for circular dependencies
         if (currentlyCreatingBeans.contains(beanId)) {
             logger.error("Circular reference detected for bean: " + beanId);
             throw new CircularDependencyException(beanId, new HashSet<>(currentlyCreatingBeans));
         }
         
         try {
-            // Mark this bean as currently being created
             currentlyCreatingBeans.add(beanId);
             
-            // Load the bean class
             Class<?> beanClass = Class.forName(beanDefinition.getClassName());
             logger.debug("Loaded class: " + beanClass.getName());
             
-            // Create a new instance (check for autowired constructors)
             Object beanInstance = instantiateBean(beanClass);
             logger.debug("Instantiated bean: " + beanId);
             
-            // Inject dependencies into fields and setters
             injectFieldDependencies(beanInstance, beanClass);
             injectSetterDependencies(beanInstance, beanClass);
             logger.debug("Injected dependencies for bean: " + beanId);
             
             return beanInstance;
         } finally {
-            // Remove from currently creating beans
             currentlyCreatingBeans.remove(beanId);
         }
     }
-    
-    // ... existing code for instantiateBean, injectFieldDependencies, etc.
-    
-    // BeanDefinitionRegistry implementation
     
     @Override
     public void registerBeanDefinition(BeanDefinition beanDefinition) throws BeanCreationException {

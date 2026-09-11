@@ -66,10 +66,8 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
     public void refresh() throws Exception {
         logger.info("Refreshing XmlApplicationContext");
         
-        // Clear the singleton cache
         this.singletonObjects.clear();
         
-        // Load bean definitions from XML config files
         if (configLocations != null) {
             for (String configLocation : configLocations) {
                 logger.debug("Loading bean definitions from location: " + configLocation);
@@ -77,23 +75,7 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
             }
         }
         
-        // Validate bean definitions
         validateBeanDefinitions();
-        
-        // Instantiate all singleton beans
-        logger.info("Instantiating singleton beans");
-        String[] beanNames = getBeanDefinitionNames();
-        for (String beanName : beanNames) {
-            BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
-            if ("singleton".equals(beanDefinition.getScope())) {
-                try {
-                    getBean(beanName);
-                } catch (BeanCreationException e) {
-                    logger.error("Error creating singleton bean '" + beanName + "'", e);
-                    throw e;
-                }
-            }
-        }
         
         logger.info("XmlApplicationContext refresh completed with " + beanDefinitionMap.size() + " bean definitions");
     }
@@ -152,6 +134,8 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
             logger.debug("Creating new prototype instance for bean: " + id);
             try {
                 return createBean(beanDefinition);
+            } catch (CircularDependencyException e) {
+                throw e;
             } catch (Exception e) {
                 logger.error("Error creating prototype bean: " + id, e);
                 throw new BeanCreationException(id, "Error creating prototype bean", e);
@@ -165,6 +149,8 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
             try {
                 singleton = createBean(beanDefinition);
                 this.singletonObjects.put(id, singleton);
+            } catch (CircularDependencyException e) {
+                throw e;
             } catch (Exception e) {
                 logger.error("Error creating singleton bean: " + id, e);
                 throw new BeanCreationException(id, "Error creating singleton bean", e);
@@ -204,31 +190,25 @@ public class XmlApplicationContext implements ApplicationContext, BeanDefinition
         String beanId = beanDefinition.getId();
         logger.debug("Creating bean: " + beanId);
         
-        // Check for circular dependencies
         if (currentlyCreatingBeans.contains(beanId)) {
             logger.error("Circular reference detected for bean: " + beanId);
             throw new CircularDependencyException(beanId, new HashSet<>(currentlyCreatingBeans));
         }
         
         try {
-            // Mark this bean as currently being created
             currentlyCreatingBeans.add(beanId);
             
-            // Load the bean class
             Class<?> beanClass = Class.forName(beanDefinition.getClassName());
             logger.debug("Loaded class: " + beanClass.getName());
             
-            // Create a new instance
             Object beanInstance = instantiateBean(beanClass);
             logger.debug("Instantiated bean: " + beanId);
             
-            // Inject dependencies
             injectDependencies(beanInstance, beanDefinition);
             logger.debug("Injected dependencies for bean: " + beanId);
             
             return beanInstance;
         } finally {
-            // Remove from currently creating beans
             currentlyCreatingBeans.remove(beanId);
         }
     }

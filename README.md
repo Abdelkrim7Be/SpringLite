@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://www.java.com/"><img src="https://img.shields.io/badge/Java-21-3776AB?style=flat-square&logo=openjdk&logoColor=white" alt="Java 21"></a>
   <a href="https://maven.apache.org/"><img src="https://img.shields.io/badge/Maven-build-C71A36?style=flat-square&logo=apachemaven&logoColor=white" alt="Maven"></a>
-  <a href="https://github.com/bellagnech/SpringLite/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-F0C808?style=flat-square" alt="MIT license"></a>
+  <a href="https://github.com/Abdelkrim7Be/SpringLite/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-F0C808?style=flat-square" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/status-educational%20POC-6F42C1?style=flat-square" alt="Educational POC">
 </p>
 
@@ -28,7 +28,7 @@ SpringLite is a small Java project inspired by Spring's application context. It 
 Requirements: Java 21 and Maven.
 
 ```bash
-git clone https://github.com/bellagnech/SpringLite.git
+git clone https://github.com/Abdelkrim7Be/SpringLite.git
 cd SpringLite
 ./mvnw test
 ```
